@@ -8,8 +8,8 @@ import numpy as np
 import pandas as pd
 
 from .base import BaseParser
-from ..core import TextEdges, Table
-from ..utils import text_in_bbox, get_table_index, compute_accuracy, compute_whitespace
+from camelot.core import TextEdges, Table
+from camelot.utils import text_in_bbox, get_table_index, compute_accuracy, compute_whitespace
 
 
 logger = logging.getLogger("camelot")
@@ -65,6 +65,7 @@ class Stream(BaseParser):
         edge_tol=50,
         row_tol=2,
         column_tol=0,
+        num_columns=None,
         **kwargs
     ):
         self.table_regions = table_regions
@@ -77,6 +78,7 @@ class Stream(BaseParser):
         self.edge_tol = edge_tol
         self.row_tol = row_tol
         self.column_tol = column_tol
+        self.num_columns = num_columns
 
     @staticmethod
     def _text_bbox(t_bbox):
@@ -94,6 +96,7 @@ class Stream(BaseParser):
             Tuple (x0, y0, x1, y1) in pdf coordinate space.
 
         """
+        print(t_bbox)
         xmin = min([t.x0 for direction in t_bbox for t in t_bbox[direction]])
         ymin = min([t.y0 for direction in t_bbox for t in t_bbox[direction]])
         xmax = max([t.x1 for direction in t_bbox for t in t_bbox[direction]])
@@ -155,6 +158,7 @@ class Stream(BaseParser):
             List of merged column x-coordinate tuples.
 
         """
+        print("list of rows",l)
         merged = []
         for higher in l:
             if not merged:
@@ -180,6 +184,7 @@ class Stream(BaseParser):
                             merged[-1] = (lower_bound, upper_bound)
                     else:
                         merged.append(higher)
+        print("after grouping cols",merged)
         return merged
 
     @staticmethod
@@ -259,6 +264,7 @@ class Stream(BaseParser):
         cols.insert(0, text_x_min)
         cols.append(text_x_max)
         cols = [(cols[i], cols[i + 1]) for i in range(0, len(cols) - 1)]
+        print("join columns:",cols)
         return cols
 
     def _validate_columns(self):
@@ -319,6 +325,18 @@ class Stream(BaseParser):
                 table_bbox[(x1, y2, x2, y1)] = None
         self.table_bbox = table_bbox
 
+    @staticmethod
+    def lower_bound(nums, target):
+        l, r = 0, len(nums) - 1
+        while l <= r:
+            mid = l + (r - l) // 2
+            print(mid)
+            if nums[mid] >= target:
+                r = mid - 1
+            else:
+                l = mid + 1
+        return l
+
     def _generate_columns_and_rows(self, table_idx, tk):
         # select elements which lie within table_bbox
         t_bbox = {}
@@ -331,10 +349,11 @@ class Stream(BaseParser):
         self.t_bbox = t_bbox
 
         text_x_min, text_y_min, text_x_max, text_y_max = self._text_bbox(self.t_bbox)
+        print("overall_text_box:: Vijender" , text_x_min, text_y_min, text_x_max, text_y_max)
         rows_grouped = self._group_rows(self.t_bbox["horizontal"], row_tol=self.row_tol)
         rows = self._join_rows(rows_grouped, text_y_max, text_y_min)
         elements = [len(r) for r in rows_grouped]
-
+        print("elements are",  elements)
         if self.columns is not None and self.columns[table_idx] != "":
             # user has to input boundary columns too
             # take (0, pdf_width) by default
@@ -351,7 +370,17 @@ class Stream(BaseParser):
             if not len(elements):
                 cols = [(text_x_min, text_x_max)]
             else:
-                ncols = max(set(elements), key=elements.count)
+                override_num_columns = 0
+                if self.num_columns and self.num_columns in elements:
+                    ncols = self.num_columns
+                    override_num_columns=1
+                else:
+                    # ncols = np.mean(elements)
+                    # elements = sorted(elements)
+                    # ncols = self.lower_bound(elements, ncols)
+                    ncols = max(set(elements), key=elements.count)
+                print("no_of_columns:",ncols)
+                #
                 if ncols == 1:
                     # if mode is 1, the page usually contains not tables
                     # but there can be cases where the list can be skewed,
@@ -365,19 +394,34 @@ class Stream(BaseParser):
                         warnings.warn(
                             f"No tables found in table area {table_idx + 1}"
                         )
-                cols = [(t.x0, t.x1) for r in rows_grouped if len(r) == ncols for t in r]
+
+                print("no_of_columns", ncols)
+                print("rows list:", rows_grouped)
+                for r in rows_grouped:
+                    if len(r) == ncols:
+                        for t in r:
+                            print((t.x0, t.x1, t.get_text()))
+                        print('*************\n')
+                if override_num_columns:
+                    cols = [(t.x0, t.x1, t.get_text()) for r in rows_grouped if len(r) == ncols for t in r]
+                else:
+                    cols = [(t.x0, t.x1, t.get_text()) for r in rows_grouped if len(r) >= ncols for t in r]
+                print("unsorted list of rows", cols)
                 cols = self._merge_columns(sorted(cols), column_tol=self.column_tol)
                 inner_text = []
                 for i in range(1, len(cols)):
                     left = cols[i - 1][1]
                     right = cols[i][0]
+                    print(i,left,right)
+                    kadu = [
+                        t
+                        for direction in self.t_bbox
+                        for t in self.t_bbox[direction]
+                        if t.x0 > left and t.x1 < right
+                    ]
+                    print("kadu value",kadu)
                     inner_text.extend(
-                        [
-                            t
-                            for direction in self.t_bbox
-                            for t in self.t_bbox[direction]
-                            if t.x0 > left and t.x1 < right
-                        ]
+                        kadu
                     )
                 outer_text = [
                     t
@@ -386,6 +430,9 @@ class Stream(BaseParser):
                     if t.x0 > cols[-1][1] or t.x1 < cols[0][0]
                 ]
                 inner_text.extend(outer_text)
+                print("outer_text:", outer_text)
+                print("inner text:",inner_text)
+                print("after merging col:",cols)
                 cols = self._add_columns(cols, inner_text, self.row_tol)
                 cols = self._join_columns(cols, text_x_min, text_x_max)
 
