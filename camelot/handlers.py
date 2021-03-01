@@ -143,13 +143,14 @@ class PDFHandler:
             instream.close()
 
     def parse(
-        self, flavor="lattice", suppress_stdout=False, layout_kwargs=None, **kwargs
+        self, flavor="lattice", suppress_stdout=False, layout_kwargs={}, preprocess_kwargs={}, **kwargs
     ):
         """Extracts tables by calling parser.get_tables on all single
         page PDFs.
 
         Parameters
         ----------
+        preprocess_kwargs
         flavor : str (default: 'lattice')
             The parsing method to use ('lattice' or 'stream').
             Lattice is used by default.
@@ -174,11 +175,14 @@ class PDFHandler:
         with TemporaryDirectory() as tempdir:
             for p in self.pages:
                 self._save_page(self.filepath, p, tempdir)
-            pages = [os.path.join(tempdir, f"page-{p}.pdf") for p in self.pages]
-            parser = Lattice(**kwargs) if flavor == "lattice" else Stream(**kwargs)
+            pages = [
+                os.path.join(tempdir, f"page-{p}.pdf") for p in self.pages
+            ]
+            parser: Union[Lattice, Stream] = Lattice(**kwargs) if flavor == "lattice" else Stream(**kwargs)
             for p in pages:
                 t = parser.extract_tables(
-                    p, suppress_stdout=suppress_stdout, layout_kwargs=layout_kwargs
+                    p, suppress_stdout=suppress_stdout, layout_kwargs=layout_kwargs,
+                    preprocess_kwargs=preprocess_kwargs
                 )
                 tables.extend(t)
         return TableList(sorted(tables))

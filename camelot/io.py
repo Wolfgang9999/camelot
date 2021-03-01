@@ -14,7 +14,8 @@ def read_pdf(
     password=None,
     flavor="lattice",
     suppress_stdout=False,
-    layout_kwargs=None,
+    layout_kwargs={},
+    preprocess_kwargs={},
     **kwargs
 ):
     """Read PDF and return extracted tables.
@@ -24,7 +25,8 @@ def read_pdf(
 
     Parameters
     ----------
-    filepath : str, Path, IO
+    preprocess_kwargs
+    filepath : str
         Filepath or URL of the PDF file.
     pages : str, optional (default: '1')
         Comma-separated page numbers.
@@ -116,12 +118,13 @@ def read_pdf(
             warnings.simplefilter("ignore")
 
         validate_input(kwargs, flavor=flavor)
-        p = PDFHandler(filepath, pages=pages, password=password)
-        kwargs = remove_extra(kwargs, flavor=flavor)
+        p: PDFHandler = PDFHandler(filepath, pages=pages, password=password)
+        # kwargs = remove_extra(kwargs, flavor=flavor)
         tables = p.parse(
             flavor=flavor,
             suppress_stdout=suppress_stdout,
             layout_kwargs=layout_kwargs,
+            preprocess_kwargs=preprocess_kwargs,
             **kwargs
         )
         return tables
