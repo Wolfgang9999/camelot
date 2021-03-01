@@ -1,6 +1,7 @@
 import os
 import sys
 from pathlib import Path
+import time
 from typing import Union
 
 from pypdf import PdfReader
@@ -172,17 +173,28 @@ class PDFHandler:
             layout_kwargs = {}
 
         tables = []
-        with TemporaryDirectory() as tempdir:
-            for p in self.pages:
-                self._save_page(self.filepath, p, tempdir)
-            pages = [
-                os.path.join(tempdir, f"page-{p}.pdf") for p in self.pages
-            ]
+        print("passed-filepath", self.filepath)
+        if len(self.pages) == 1:
             parser: Union[Lattice, Stream] = Lattice(**kwargs) if flavor == "lattice" else Stream(**kwargs)
-            for p in pages:
-                t = parser.extract_tables(
-                    p, suppress_stdout=suppress_stdout, layout_kwargs=layout_kwargs,
-                    preprocess_kwargs=preprocess_kwargs
-                )
-                tables.extend(t)
+            t = parser.extract_tables(
+                self.filepath, suppress_stdout=suppress_stdout, layout_kwargs=layout_kwargs,
+                preprocess_kwargs=preprocess_kwargs
+            )
+            tables.extend(t)
+        else:
+            with TemporaryDirectory() as tempdir:
+                for p in self.pages:
+                    self._save_page(self.filepath, p, tempdir)
+                pages = [
+                    os.path.join(tempdir, f"page-{p}.pdf") for p in self.pages
+                ]
+                parser: Union[Lattice, Stream] = Lattice(**kwargs) if flavor == "lattice" else Stream(**kwargs)
+                for p in pages:
+                    st = time.time()
+                    t = parser.extract_tables(
+                        p, suppress_stdout=suppress_stdout, layout_kwargs=layout_kwargs,
+                        preprocess_kwargs=preprocess_kwargs
+                    )
+                    print("Table-extraction time:", time.time() - st)
+                    tables.extend(t)
         return TableList(sorted(tables))

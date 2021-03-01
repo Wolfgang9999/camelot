@@ -4,6 +4,7 @@ from typing import Union
 
 from pypdf._utils import StrByteType
 
+import time
 from .handlers import PDFHandler
 from .utils import remove_extra
 from .utils import validate_input
@@ -118,6 +119,7 @@ def read_pdf(
             warnings.simplefilter("ignore")
 
         validate_input(kwargs, flavor=flavor)
+        st = time.time()
         p: PDFHandler = PDFHandler(filepath, pages=pages, password=password)
         kwargs = remove_extra(kwargs, flavor=flavor)
         tables = p.parse(
@@ -127,4 +129,5 @@ def read_pdf(
             preprocess_kwargs=preprocess_kwargs,
             **kwargs
         )
+        print("Table-extraction time:", time.time()-st)
         return tables
