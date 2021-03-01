@@ -1,7 +1,6 @@
 import logging
 import os
 import warnings
-
 import numpy as np
 import pandas as pd
 
@@ -166,7 +165,6 @@ class Stream(BaseParser):
             List of merged column x-coordinate tuples.
 
         """
-        print("list of rows",l)
         merged = []
         for higher in l:
             if not merged:
@@ -192,7 +190,6 @@ class Stream(BaseParser):
                             merged[-1] = (lower_bound, upper_bound)
                     else:
                         merged.append(higher)
-        print("after grouping cols",merged)
         return merged
 
     @staticmethod
@@ -272,7 +269,6 @@ class Stream(BaseParser):
         cols.insert(0, text_x_min)
         cols.append(text_x_max)
         cols = [(cols[i], cols[i + 1]) for i in range(0, len(cols) - 1)]
-        print("join columns:",cols)
         return cols
 
     def _validate_columns(self):
@@ -338,7 +334,6 @@ class Stream(BaseParser):
         l, r = 0, len(nums) - 1
         while l <= r:
             mid = l + (r - l) // 2
-            print(mid)
             if nums[mid] >= target:
                 r = mid - 1
             else:
@@ -357,11 +352,9 @@ class Stream(BaseParser):
         self.t_bbox = t_bbox
 
         text_x_min, text_y_min, text_x_max, text_y_max = self._text_bbox(self.t_bbox)
-        print("overall_text_box:: Vijender" , text_x_min, text_y_min, text_x_max, text_y_max)
         rows_grouped = self._group_rows(self.t_bbox["horizontal"], row_tol=self.row_tol)
         rows = self._join_rows(rows_grouped, text_y_max, text_y_min)
         elements = [len(r) for r in rows_grouped]
-        print("elements are",  elements)
         if self.columns is not None and self.columns[table_idx] != "":
             # user has to input boundary columns too
             # take (0, pdf_width) by default
@@ -387,7 +380,6 @@ class Stream(BaseParser):
                     # elements = sorted(elements)
                     # ncols = self.lower_bound(elements, ncols)
                     ncols = max(set(elements), key=elements.count)
-                print("no_of_columns:",ncols)
                 #
                 if ncols == 1:
                     # if mode is 1, the page usually contains not tables
@@ -403,33 +395,22 @@ class Stream(BaseParser):
                             f"No tables found in table area {table_idx + 1}"
                         )
 
-                print("no_of_columns", ncols)
-                print("rows list:", rows_grouped)
-                for r in rows_grouped:
-                    if len(r) == ncols:
-                        for t in r:
-                            print((t.x0, t.x1, t.get_text()))
-                        print('*************\n')
                 if override_num_columns:
                     cols = [(t.x0, t.x1, t.get_text()) for r in rows_grouped if len(r) == ncols for t in r]
                 else:
                     cols = [(t.x0, t.x1, t.get_text()) for r in rows_grouped if len(r) >= ncols for t in r]
-                print("unsorted list of rows", cols)
                 cols = self._merge_columns(sorted(cols), column_tol=self.column_tol)
                 inner_text = []
                 for i in range(1, len(cols)):
                     left = cols[i - 1][1]
                     right = cols[i][0]
-                    print(i,left,right)
-                    kadu = [
-                        t
-                        for direction in self.t_bbox
-                        for t in self.t_bbox[direction]
-                        if t.x0 > left and t.x1 < right
-                    ]
-                    print("kadu value",kadu)
                     inner_text.extend(
-                        kadu
+                        [
+                            t
+                            for direction in self.t_bbox
+                            for t in self.t_bbox[direction]
+                            if t.x0 > left and t.x1 < right
+                        ]
                     )
                 outer_text = [
                     t
@@ -438,9 +419,6 @@ class Stream(BaseParser):
                     if t.x0 > cols[-1][1] or t.x1 < cols[0][0]
                 ]
                 inner_text.extend(outer_text)
-                print("outer_text:", outer_text)
-                print("inner text:",inner_text)
-                print("after merging col:",cols)
                 cols = self._add_columns(cols, inner_text, self.row_tol)
                 cols = self._join_columns(cols, text_x_min, text_x_max)
 
@@ -507,9 +485,7 @@ class Stream(BaseParser):
             else:
                 warnings.warn(f"No tables found on {base_filename}")
             return []
-
         self._generate_table_bbox()
-
         _tables = []
         # sort tables based on y-coord
         for table_idx, tk in enumerate(
@@ -519,5 +495,4 @@ class Stream(BaseParser):
             table = self._generate_table(table_idx, cols, rows)
             table._bbox = tk
             _tables.append(table)
-
         return _tables

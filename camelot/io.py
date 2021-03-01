@@ -8,7 +8,6 @@ from .handlers import PDFHandler
 from .utils import remove_extra
 from .utils import validate_input
 
-
 def read_pdf(
     filepath: Union[StrByteType, Path],
     pages="1",

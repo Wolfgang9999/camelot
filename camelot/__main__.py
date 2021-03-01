@@ -18,12 +18,12 @@ def pprint(df, return_str=False):
 
 def main():
     from camelot.io import read_pdf
-    tables = read_pdf(
-        "/Users/vijender/indvision-data/2020_11_0319_33_38_008446_1604432018_unlckd_reptd_redacted_merged.pdf",
-        flavor='stream', table_areas=["0,1910,595,1860"])
-    tables.export('foo.csv', f='csv', compress=False)
-    data = tables[0].df
-    pprint(data)
+    filename = "/Users/vijender/Documents/Intern/indpaasx/vision/resources/pdfs/amc/sbi/sbi_6_ADBPB4295N_unlckd_reptd_redacted_merged.pdf"
+
+    tables = read_pdf(filename,
+                      flavor='stream', table_areas=["0,4776,595,4577"])
+
+    pprint(tables[0].df)
 
 
 if __name__ == "__main__":
