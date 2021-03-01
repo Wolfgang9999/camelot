@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import warnings
-
+import time
 from .handlers import PDFHandler
 from .utils import validate_input, remove_extra
 
@@ -109,6 +109,7 @@ def read_pdf(
             warnings.simplefilter("ignore")
 
         validate_input(kwargs, flavor=flavor)
+        st = time.time()
         p: PDFHandler = PDFHandler(filepath, pages=pages, password=password)
         kwargs = remove_extra(kwargs, flavor=flavor)
         tables = p.parse(
@@ -118,4 +119,5 @@ def read_pdf(
             preprocess_kwargs=preprocess_kwargs,
             **kwargs
         )
+        print("Table-extraction time:", time.time()-st)
         return tables

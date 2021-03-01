@@ -447,7 +447,7 @@ class Stream(BaseParser):
         table.accuracy = accuracy
         table.whitespace = whitespace
         table.order = table_idx + 1
-        table.page = int(os.path.basename(self.rootname).replace("page-", ""))
+        table.page = int(os.path.basename(self.rootname).split("page-")[-1])
 
         # for plotting
         _text = []
