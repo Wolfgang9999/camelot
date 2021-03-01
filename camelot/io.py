@@ -5,7 +5,6 @@ import warnings
 from .handlers import PDFHandler
 from .utils import validate_input, remove_extra
 
-
 def read_pdf(
     filepath,
     pages="1",
