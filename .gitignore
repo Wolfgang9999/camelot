@@ -12,7 +12,10 @@ coverage.xml
 .pytest_cache/
 _build/
 
+.idea/
+
 .venv/
+venv/
 htmlcov/
 
 # vscode

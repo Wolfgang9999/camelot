@@ -3,13 +3,12 @@
 import os
 import logging
 import warnings
-
 import numpy as np
 import pandas as pd
 
 from .base import BaseParser
-from ..core import TextEdges, Table
-from ..utils import text_in_bbox, get_table_index, compute_accuracy, compute_whitespace
+from camelot.core import TextEdges, Table
+from camelot.utils import text_in_bbox, get_table_index, compute_accuracy, compute_whitespace
 
 
 logger = logging.getLogger("camelot")
@@ -65,6 +64,7 @@ class Stream(BaseParser):
         edge_tol=50,
         row_tol=2,
         column_tol=0,
+        num_columns=None,
         **kwargs
     ):
         self.table_regions = table_regions
@@ -77,6 +77,7 @@ class Stream(BaseParser):
         self.edge_tol = edge_tol
         self.row_tol = row_tol
         self.column_tol = column_tol
+        self.num_columns = num_columns
 
     @staticmethod
     def _text_bbox(t_bbox):
@@ -319,6 +320,17 @@ class Stream(BaseParser):
                 table_bbox[(x1, y2, x2, y1)] = None
         self.table_bbox = table_bbox
 
+    @staticmethod
+    def lower_bound(nums, target):
+        l, r = 0, len(nums) - 1
+        while l <= r:
+            mid = l + (r - l) // 2
+            if nums[mid] >= target:
+                r = mid - 1
+            else:
+                l = mid + 1
+        return l
+
     def _generate_columns_and_rows(self, table_idx, tk):
         # select elements which lie within table_bbox
         t_bbox = {}
@@ -334,7 +346,6 @@ class Stream(BaseParser):
         rows_grouped = self._group_rows(self.t_bbox["horizontal"], row_tol=self.row_tol)
         rows = self._join_rows(rows_grouped, text_y_max, text_y_min)
         elements = [len(r) for r in rows_grouped]
-
         if self.columns is not None and self.columns[table_idx] != "":
             # user has to input boundary columns too
             # take (0, pdf_width) by default
@@ -351,7 +362,16 @@ class Stream(BaseParser):
             if not len(elements):
                 cols = [(text_x_min, text_x_max)]
             else:
-                ncols = max(set(elements), key=elements.count)
+                override_num_columns = 0
+                if self.num_columns and self.num_columns in elements:
+                    ncols = self.num_columns
+                    override_num_columns=1
+                else:
+                    # ncols = np.mean(elements)
+                    # elements = sorted(elements)
+                    # ncols = self.lower_bound(elements, ncols)
+                    ncols = max(set(elements), key=elements.count)
+                #
                 if ncols == 1:
                     # if mode is 1, the page usually contains not tables
                     # but there can be cases where the list can be skewed,
@@ -365,7 +385,11 @@ class Stream(BaseParser):
                         warnings.warn(
                             f"No tables found in table area {table_idx + 1}"
                         )
-                cols = [(t.x0, t.x1) for r in rows_grouped if len(r) == ncols for t in r]
+
+                if override_num_columns:
+                    cols = [(t.x0, t.x1, t.get_text()) for r in rows_grouped if len(r) == ncols for t in r]
+                else:
+                    cols = [(t.x0, t.x1, t.get_text()) for r in rows_grouped if len(r) >= ncols for t in r]
                 cols = self._merge_columns(sorted(cols), column_tol=self.column_tol)
                 inner_text = []
                 for i in range(1, len(cols)):
@@ -423,7 +447,7 @@ class Stream(BaseParser):
         table.accuracy = accuracy
         table.whitespace = whitespace
         table.order = table_idx + 1
-        table.page = int(os.path.basename(self.rootname).replace("page-", ""))
+        table.page = int(os.path.basename(self.rootname).split("page-")[-1])
 
         # for plotting
         _text = []
@@ -436,8 +460,8 @@ class Stream(BaseParser):
 
         return table
 
-    def extract_tables(self, filename, suppress_stdout=False, layout_kwargs={}):
-        self._generate_layout(filename, layout_kwargs)
+    def extract_tables(self, filename, suppress_stdout=False, layout_kwargs={}, preprocess_kwargs={}):
+        self._generate_layout(filename, layout_kwargs, **preprocess_kwargs)
         base_filename = os.path.basename(self.rootname)
 
         if not suppress_stdout:
@@ -452,9 +476,7 @@ class Stream(BaseParser):
             else:
                 warnings.warn(f"No tables found on {base_filename}")
             return []
-
         self._generate_table_bbox()
-
         _tables = []
         # sort tables based on y-coord
         for table_idx, tk in enumerate(
@@ -464,5 +486,4 @@ class Stream(BaseParser):
             table = self._generate_table(table_idx, cols, rows)
             table._bbox = tk
             _tables.append(table)
-
         return _tables

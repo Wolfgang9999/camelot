@@ -2,6 +2,8 @@
 
 import os
 import sys
+import time
+from typing import Union
 
 from PyPDF2 import PdfFileReader, PdfFileWriter
 
@@ -140,13 +142,14 @@ class PDFHandler(object):
                 instream.close()
 
     def parse(
-        self, flavor="lattice", suppress_stdout=False, layout_kwargs={}, **kwargs
+        self, flavor="lattice", suppress_stdout=False, layout_kwargs={}, preprocess_kwargs={}, **kwargs
     ):
         """Extracts tables by calling parser.get_tables on all single
         page PDFs.
 
         Parameters
         ----------
+        preprocess_kwargs
         flavor : str (default: 'lattice')
             The parsing method to use ('lattice' or 'stream').
             Lattice is used by default.
@@ -164,16 +167,28 @@ class PDFHandler(object):
 
         """
         tables = []
-        with TemporaryDirectory() as tempdir:
-            for p in self.pages:
-                self._save_page(self.filepath, p, tempdir)
-            pages = [
-                os.path.join(tempdir, f"page-{p}.pdf") for p in self.pages
-            ]
-            parser = Lattice(**kwargs) if flavor == "lattice" else Stream(**kwargs)
-            for p in pages:
-                t = parser.extract_tables(
-                    p, suppress_stdout=suppress_stdout, layout_kwargs=layout_kwargs
-                )
-                tables.extend(t)
+        print("passed-filepath", self.filepath)
+        if len(self.pages) == 1:
+            parser: Union[Lattice, Stream] = Lattice(**kwargs) if flavor == "lattice" else Stream(**kwargs)
+            t = parser.extract_tables(
+                self.filepath, suppress_stdout=suppress_stdout, layout_kwargs=layout_kwargs,
+                preprocess_kwargs=preprocess_kwargs
+            )
+            tables.extend(t)
+        else:
+            with TemporaryDirectory() as tempdir:
+                for p in self.pages:
+                    self._save_page(self.filepath, p, tempdir)
+                pages = [
+                    os.path.join(tempdir, f"page-{p}.pdf") for p in self.pages
+                ]
+                parser: Union[Lattice, Stream] = Lattice(**kwargs) if flavor == "lattice" else Stream(**kwargs)
+                for p in pages:
+                    st = time.time()
+                    t = parser.extract_tables(
+                        p, suppress_stdout=suppress_stdout, layout_kwargs=layout_kwargs,
+                        preprocess_kwargs=preprocess_kwargs
+                    )
+                    print("Table-extraction time:", time.time() - st)
+                    tables.extend(t)
         return TableList(sorted(tables))
