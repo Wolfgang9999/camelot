@@ -36,7 +36,7 @@ class PDFHandler(object):
 
     """
 
-    def __init__(self, filepath, pages="1", password=None):
+    def __init__(self, filepath, pages="all", password=None):
         if is_url(filepath):
             filepath = download_url(filepath)
         self.filepath = filepath
