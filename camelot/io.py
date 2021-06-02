@@ -11,7 +11,7 @@ from .utils import validate_input
 
 def read_pdf(
     filepath: Union[StrByteType, Path],
-    pages="1",
+    pages="all",
     password=None,
     flavor="lattice",
     suppress_stdout=False,
@@ -120,6 +120,8 @@ def read_pdf(
 
         validate_input(kwargs, flavor=flavor)
         st = time.time()
+        if pages is None or 'None':
+            pages = 'all'
         p: PDFHandler = PDFHandler(filepath, pages=pages, password=password)
         kwargs = remove_extra(kwargs, flavor=flavor)
         tables = p.parse(
