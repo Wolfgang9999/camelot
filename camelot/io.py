@@ -9,6 +9,7 @@ from .handlers import PDFHandler
 from .utils import remove_extra
 from .utils import validate_input
 
+
 def read_pdf(
     filepath: Union[StrByteType, Path],
     pages="all",
@@ -120,7 +121,7 @@ def read_pdf(
 
         validate_input(kwargs, flavor=flavor)
         st = time.time()
-        if pages is None or 'None':
+        if pages in [None, 'None']:
             pages = 'all'
         p: PDFHandler = PDFHandler(filepath, pages=pages, password=password)
         kwargs = remove_extra(kwargs, flavor=flavor)
@@ -131,5 +132,5 @@ def read_pdf(
             preprocess_kwargs=preprocess_kwargs,
             **kwargs
         )
-        print("Table-extraction time:", time.time()-st)
+        print("Table-extraction time:", time.time() - st)
         return tables

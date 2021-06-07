@@ -382,7 +382,7 @@ class Lattice(BaseParser):
         table.accuracy = accuracy
         table.whitespace = whitespace
         table.order = table_idx + 1
-        table.page = int(os.path.basename(self.rootname).split("page-")[-1])
+        # table.page = int(os.path.basename(self.rootname).split("page-")[-1])
 
         # for plotting
         _text = []
@@ -395,8 +395,8 @@ class Lattice(BaseParser):
 
         return table
 
-    def extract_tables(self, filename, suppress_stdout=False, layout_kwargs={}, preprocess_kwargs={}):
-        self._generate_layout(filename, layout_kwargs, **preprocess_kwargs)
+    def extract_tables(self, filename, page=0, suppress_stdout=False, layout_kwargs={}, preprocess_kwargs={}):
+        self._generate_layout(filename, page, layout_kwargs, **preprocess_kwargs)
         if not suppress_stdout:
             logger.info(f"Processing {os.path.basename(self.rootname)}")
 
