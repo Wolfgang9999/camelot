@@ -24,7 +24,7 @@ from pdfminer.layout import (
     LTChar,
     LTTextLineHorizontal,
     LTTextLineVertical,
-    LTImage,
+    LTImage
 )
 
 from urllib.request import Request, urlopen
@@ -364,7 +364,6 @@ def text_in_bbox(bbox, text):
         if lb[0] - 2 <= (t.x0 + t.x1) / 2.0 <= rt[0] + 2
         and lb[1] - 2 <= (t.y0 + t.y1) / 2.0 <= rt[1] + 2
     ]
-
     # Avoid duplicate text by discarding overlapping boxes
     rest = {t for t in t_bbox}
     for ba in t_bbox:
@@ -883,6 +882,7 @@ def get_page_layout(
         rsrcmgr = PDFResourceManager()
         device = PDFPageAggregator(rsrcmgr, laparams=laparams)
         interpreter = PDFPageInterpreter(rsrcmgr, device)
+
         for page in PDFPage.create_pages(document):
             interpreter.process_page(page)
             layout = device.get_result()

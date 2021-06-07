@@ -5,15 +5,16 @@ import time
 from .handlers import PDFHandler
 from .utils import validate_input, remove_extra
 
+
 def read_pdf(
-    filepath,
-    pages="all",
-    password=None,
-    flavor="lattice",
-    suppress_stdout=False,
-    layout_kwargs={},
-    preprocess_kwargs={},
-    **kwargs
+        filepath,
+        pages=None,
+        password=None,
+        flavor="lattice",
+        suppress_stdout=False,
+        layout_kwargs={},
+        preprocess_kwargs={},
+        **kwargs
 ):
     """Read PDF and return extracted tables.
 
@@ -110,7 +111,7 @@ def read_pdf(
 
         validate_input(kwargs, flavor=flavor)
         st = time.time()
-        if pages is None or 'None':
+        if pages in [None, 'None']:
             pages = 'all'
         p: PDFHandler = PDFHandler(filepath, pages=pages, password=password)
         kwargs = remove_extra(kwargs, flavor=flavor)
@@ -121,5 +122,5 @@ def read_pdf(
             preprocess_kwargs=preprocess_kwargs,
             **kwargs
         )
-        print("Table-extraction time:", time.time()-st)
+        print("Table-extraction time:", time.time() - st)
         return tables
