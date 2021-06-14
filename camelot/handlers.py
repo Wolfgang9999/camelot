@@ -36,7 +36,7 @@ class PDFHandler(object):
 
     """
 
-    def __init__(self, filepath, pages="1", password=None):
+    def __init__(self, filepath, pages="all", password=None):
         if is_url(filepath):
             filepath = download_url(filepath)
         self.filepath = filepath
@@ -168,10 +168,11 @@ class PDFHandler(object):
         """
         tables = []
         print("passed-filepath", self.filepath)
+        print(self.pages)
         if len(self.pages) == 1:
             parser: Union[Lattice, Stream] = Lattice(**kwargs) if flavor == "lattice" else Stream(**kwargs)
             t = parser.extract_tables(
-                self.filepath, suppress_stdout=suppress_stdout, layout_kwargs=layout_kwargs,
+                self.filepath, page=self.pages[0], suppress_stdout=suppress_stdout, layout_kwargs=layout_kwargs,
                 preprocess_kwargs=preprocess_kwargs
             )
             tables.extend(t)
