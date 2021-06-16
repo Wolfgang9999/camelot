@@ -141,7 +141,29 @@ class PDFHandler:
             outfile.add_page(p)
             with open(fpath, "wb") as f:
                 outfile.write(f)
-            instream.close()
+            # layout, dim = get_page_layout(fpath)
+            # # fix rotated PDF
+            # chars = get_text_objects(layout, ltype="char")
+            # horizontal_text = get_text_objects(layout, ltype="horizontal_text")
+            # vertical_text = get_text_objects(layout, ltype="vertical_text")
+            # rotation = get_rotation(chars, horizontal_text, vertical_text)
+            # if rotation != "":
+            #     fpath_new = "".join([froot.replace("page", "p"), "_rotated", fext])
+            #     os.rename(fpath, fpath_new)
+            #     instream = open(fpath_new, "rb")
+            #     infile = PdfFileReader(instream, strict=False)
+            #     if infile.isEncrypted:
+            #         infile.decrypt(self.password)
+            #     outfile = PdfFileWriter()
+            #     p = infile.getPage(0)
+            #     if rotation == "anticlockwise":
+            #         p.rotateClockwise(90)
+            #     elif rotation == "clockwise":
+            #         p.rotateCounterClockwise(90)
+            #     outfile.addPage(p)
+            #     with open(fpath, "wb") as f:
+            #         outfile.write(f)
+            #     instream.close()
 
     def parse(
         self, flavor="lattice", suppress_stdout=False, layout_kwargs={}, preprocess_kwargs={}, **kwargs
@@ -176,12 +198,18 @@ class PDFHandler:
         print("passed-filepath", self.filepath)
         print(self.pages)
         if len(self.pages) == 1:
-            parser: Union[Lattice, Stream] = Lattice(**kwargs) if flavor == "lattice" else Stream(**kwargs)
-            t = parser.extract_tables(
-                self.filepath, page=self.pages[0], suppress_stdout=suppress_stdout, layout_kwargs=layout_kwargs,
-                preprocess_kwargs=preprocess_kwargs
-            )
-            tables.extend(t)
+            with TemporaryDirectory() as tempdir:
+                for p in self.pages:
+                    self._save_page(self.filepath, p, tempdir)
+                pages = [
+                    os.path.join(tempdir, f"page-{p}.pdf") for p in self.pages
+                ]
+                parser: Union[Lattice, Stream] = Lattice(**kwargs) if flavor == "lattice" else Stream(**kwargs)
+                t = parser.extract_tables(
+                    pages[0], page=self.pages[0], suppress_stdout=suppress_stdout, layout_kwargs=layout_kwargs,
+                    preprocess_kwargs=preprocess_kwargs
+                )
+                tables.extend(t)
         else:
             with TemporaryDirectory() as tempdir:
                 for p in self.pages:
@@ -192,6 +220,7 @@ class PDFHandler:
                 parser: Union[Lattice, Stream] = Lattice(**kwargs) if flavor == "lattice" else Stream(**kwargs)
                 for p in pages:
                     st = time.time()
+
                     t = parser.extract_tables(
                         p, suppress_stdout=suppress_stdout, layout_kwargs=layout_kwargs,
                         preprocess_kwargs=preprocess_kwargs

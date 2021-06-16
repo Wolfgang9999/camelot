@@ -106,7 +106,8 @@ class Lattice(BaseParser):
         iterations=0,
         resolution=300,
         backend="ghostscript",
-        **kwargs,
+        zoom=2.5,
+        **kwargs
     ):
         self.table_regions = table_regions
         self.table_areas = table_areas
@@ -124,6 +125,8 @@ class Lattice(BaseParser):
         self.iterations = iterations
         self.resolution = resolution
         self.backend = Lattice._get_backend(backend)
+        self.zoom = zoom
+
 
     @staticmethod
     def _get_backend(backend):
@@ -232,6 +235,26 @@ class Lattice(BaseParser):
                             if t.cells[i][j].vspan and not t.cells[i][j].top:
                                 t.cells[i][j].text = t.cells[i - 1][j].text
         return t
+
+    def _generate_image(self, zoom=1):
+        import fitz
+        doc = fitz.open(self.filename)
+        self.imagename = "".join([self.rootname, ".png"])
+        page = doc[0]
+        mat = fitz.Matrix(zoom, zoom)
+        pix = page.get_pixmap(matrix=mat, alpha=False)
+        pix.save(self.imagename)
+        # from ..ext.ghostscript import Ghostscript
+        # print(self.filename)
+        # self.imagename = "".join([self.rootname, ".png"])
+        # gs_call = "-q -sDEVICE=png16m -o {} -r300 {}".format(
+        #     self.imagename, self.filename
+        # )
+        # gs_call = gs_call.encode().split()
+        # null = open(os.devnull, "wb")
+        # with Ghostscript(*gs_call, stdout=null) as gs:
+        #     pass
+        # null.close()
 
     def _generate_table_bbox(self):
         def scale_areas(areas):
@@ -367,7 +390,10 @@ class Lattice(BaseParser):
                         table, indices, shift_text=self.shift_text
                     )
                     for r_idx, c_idx, text in indices:
-                        table.cells[r_idx][c_idx].text = text
+                        if table.cells[r_idx][c_idx].text:
+                            table.cells[r_idx][c_idx].text = " " + text
+                        else:
+                            table.cells[r_idx][c_idx].text = text
         accuracy = compute_accuracy([[100, pos_errors]])
 
         if self.copy_text is not None:
@@ -382,7 +408,7 @@ class Lattice(BaseParser):
         table.accuracy = accuracy
         table.whitespace = whitespace
         table.order = table_idx + 1
-        # table.page = int(os.path.basename(self.rootname).split("page-")[-1])
+        table.page = int(os.path.basename(self.rootname).split("page-")[-1])
 
         # for plotting
         _text = []
@@ -409,9 +435,7 @@ class Lattice(BaseParser):
             else:
                 warnings.warn(f"No tables found on {os.path.basename(self.rootname)}")
             return []
-
-        self.backend.convert(self.filename, self.imagename)
-
+        self._generate_image(zoom=self.zoom)
         self._generate_table_bbox()
 
         _tables = []
