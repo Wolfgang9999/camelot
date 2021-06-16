@@ -15,7 +15,7 @@ class BaseParser(object):
     ):
         self.filename = filename
         self.layout_kwargs = layout_kwargs
-        self.layout, self.dimensions = layout[page], dimensions
+        self.layout, self.dimensions = layout[page-1], dimensions
         # get_page_layout(filename, **layout_kwargs) #layout, dimensions
         self.images = get_text_objects(self.layout, ltype="image")
         self.horizontal_text = get_text_objects(self.layout, ltype="horizontal_text")
