@@ -195,8 +195,6 @@ class PDFHandler:
             layout_kwargs = {}
 
         tables = []
-        print("passed-filepath", self.filepath)
-        print(self.pages)
         if len(self.pages) == 1:
             with TemporaryDirectory() as tempdir:
                 for p in self.pages:
@@ -218,13 +216,14 @@ class PDFHandler:
                     os.path.join(tempdir, f"page-{p}.pdf") for p in self.pages
                 ]
                 parser: Union[Lattice, Stream] = Lattice(**kwargs) if flavor == "lattice" else Stream(**kwargs)
+                count = 0
                 for p in pages:
                     st = time.time()
 
                     t = parser.extract_tables(
-                        p, suppress_stdout=suppress_stdout, layout_kwargs=layout_kwargs,
+                        p, page=self.pages[count], suppress_stdout=suppress_stdout, layout_kwargs=layout_kwargs,
                         preprocess_kwargs=preprocess_kwargs
                     )
-                    print("Table-extraction time:", time.time() - st)
+                    count += 1
                     tables.extend(t)
         return TableList(sorted(tables))
