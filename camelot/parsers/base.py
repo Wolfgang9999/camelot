@@ -11,14 +11,10 @@ class BaseParser(object):
 
     def _generate_layout(
         self, filename, page, layout_kwargs,
-        layout, dimensions, **kwargs
+        layouts, dimensions, **kwargs
     ):
         self.filename = filename
         self.layout_kwargs = layout_kwargs
-        self.layout, self.dimensions = layout[page-1], dimensions
-        # get_page_layout(filename, **layout_kwargs) #layout, dimensions
-        self.images = get_text_objects(self.layout, ltype="image")
-        self.horizontal_text = get_text_objects(self.layout, ltype="horizontal_text")
-        self.vertical_text = get_text_objects(self.layout, ltype="vertical_text")
+        self.horizontal_text, self.dimensions = layouts[page-1], dimensions
         self.pdf_width, self.pdf_height = self.dimensions
         self.rootname, __ = os.path.splitext(self.filename)

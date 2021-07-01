@@ -345,8 +345,8 @@ def text_in_bbox(bbox, text):
     Parameters
     ----------
     bbox : tuple
-        Tuple (x1, y1, x2, y2) representing a bounding box where
-        (x1, y1) -> lb and (x2, y2) -> rt in the PDF coordinate
+        Tuple (left, bottom, right, top) representing a bounding box where
+        (left, bottom) -> lb and (right, top) -> rt in the PDF coordinate
         space.
     text : List of PDFMiner text objects.
 
@@ -361,8 +361,8 @@ def text_in_bbox(bbox, text):
     t_bbox = [
         t
         for t in text
-        if lb[0] - 2 <= (t.x0 + t.x1) / 2.0 <= rt[0] + 2
-        and lb[1] - 2 <= (t.y0 + t.y1) / 2.0 <= rt[1] + 2
+        if lb[0] - 2 <= (t.left + t.right) / 2.0 <= rt[0] + 2
+        and lb[1] - 2 <= (t.bottom + t.top) / 2.0 <= rt[1] + 2
     ]
     # Avoid duplicate text by discarding overlapping boxes
     rest = {t for t in t_bbox}
@@ -374,7 +374,7 @@ def text_in_bbox(bbox, text):
                 # if the intersection is larger than 80% of ba's size, we keep the longest
                 if (bbox_intersection_area(ba, bb) / bbox_area(ba)) > 0.8:
                     # we will remove intersecting box if small box text lies in bigger box
-                    if ba.get_text().strip().lower() in bb.get_text().strip().lower():
+                    if ba.text.strip().lower() in bb.text.strip().lower():
                         if bbox_longer(bb, ba):
                             rest.discard(ba)
     unique_boxes = list(rest)
@@ -396,10 +396,10 @@ def bbox_intersection_area(ba, bb) -> float:
         Area of the intersection of the bounding boxes of both objects
 
     """
-    x_left = max(ba.x0, bb.x0)
-    y_top = min(ba.y1, bb.y1)
-    x_right = min(ba.x1, bb.x1)
-    y_bottom = max(ba.y0, bb.y0)
+    x_left = max(ba.left, bb.left)
+    y_top = min(ba.top, bb.top)
+    x_right = min(ba.right, bb.right)
+    y_bottom = max(ba.bottom, bb.bottom)
 
     if x_right < x_left or y_bottom > y_top:
         return 0.0
@@ -438,7 +438,7 @@ def bbox_intersect(ba, bb) -> bool:
         True if the bounding boxes intersect
 
     """
-    return ba.x1 >= bb.x0 and bb.x1 >= ba.x0 and ba.y1 >= bb.y0 and bb.y1 >= ba.y0
+    return ba.right >= bb.left and bb.right >= ba.left and ba.top >= bb.bottom and bb.top >= ba.bottom
 
 
 def bbox_longer(ba, bb) -> bool:
@@ -455,7 +455,7 @@ def bbox_longer(ba, bb) -> bool:
         True if the bounding box of the first object is longer or equal
 
     """
-    return (ba.x1 - ba.x0) >= (bb.x1 - bb.x0)
+    return (ba.right - ba.left) >= (bb.right - bb.left)
 
 
 def merge_close_lines(ar, line_tol=2):
@@ -723,20 +723,18 @@ def get_table_index(
     """
     r_idx, c_idx = [-1] * 2
     for r in range(len(table.rows)):
-        if (t.y0 + t.y1) / 2.0 < table.rows[r][0] and (t.y0 + t.y1) / 2.0 > table.rows[
-            r
-        ][1]:
+        if (t.bottom + t.top) / 2.0 < table.rows[r][0] and (t.bottom + t.top) / 2.0 > table.rows[r][1]:
             lt_col_overlap = []
             for c in table.cols:
-                if c[0] <= t.x1 and c[1] >= t.x0:
-                    left = t.x0 if c[0] <= t.x0 else c[0]
-                    right = t.x1 if c[1] >= t.x1 else c[1]
+                if c[0] <= t.right and c[1] >= t.left:
+                    left = t.left if c[0] <= t.left else c[0]
+                    right = t.right if c[1] >= t.right else c[1]
                     lt_col_overlap.append(abs(left - right) / abs(c[0] - c[1]))
                 else:
                     lt_col_overlap.append(-1)
             if len(list(filter(lambda x: x != -1, lt_col_overlap))) == 0:
-                text = t.get_text().strip("\n")
-                text_range = (t.x0, t.x1)
+                text = t.text.strip("\n")
+                text_range = (t.left, t.right)
                 col_range = (table.cols[0][0], table.cols[-1][1])
                 warnings.warn(
                     f"{text} {text_range} does not lie in column range {col_range}"
@@ -746,19 +744,19 @@ def get_table_index(
             break
 
     # error calculation
-    y0_offset, y1_offset, x0_offset, x1_offset = [0] * 4
-    if t.y0 > table.rows[r_idx][0]:
-        y0_offset = abs(t.y0 - table.rows[r_idx][0])
-    if t.y1 < table.rows[r_idx][1]:
-        y1_offset = abs(t.y1 - table.rows[r_idx][1])
-    if t.x0 < table.cols[c_idx][0]:
-        x0_offset = abs(t.x0 - table.cols[c_idx][0])
-    if t.x1 > table.cols[c_idx][1]:
-        x1_offset = abs(t.x1 - table.cols[c_idx][1])
-    X = 1.0 if abs(t.x0 - t.x1) == 0.0 else abs(t.x0 - t.x1)
-    Y = 1.0 if abs(t.y0 - t.y1) == 0.0 else abs(t.y0 - t.y1)
+    bottom_offset, top_offset, left_offset, right_offset = [0] * 4
+    if t.bottom > table.rows[r_idx][0]:
+        bottom_offset = abs(t.bottom - table.rows[r_idx][0])
+    if t.top < table.rows[r_idx][1]:
+        top_offset = abs(t.top - table.rows[r_idx][1])
+    if t.left < table.cols[c_idx][0]:
+        left_offset = abs(t.left - table.cols[c_idx][0])
+    if t.right > table.cols[c_idx][1]:
+        right_offset = abs(t.right - table.cols[c_idx][1])
+    X = 1.0 if abs(t.left - t.right) == 0.0 else abs(t.left - t.right)
+    Y = 1.0 if abs(t.bottom - t.top) == 0.0 else abs(t.bottom - t.top)
     charea = X * Y
-    error = ((X * (y0_offset + y1_offset)) + (Y * (x0_offset + x1_offset))) / charea
+    error = ((X * (bottom_offset + top_offset)) + (Y * (left_offset + right_offset))) / charea
 
     if split_text:
         return (
@@ -780,7 +778,7 @@ def get_table_index(
                 error,
             )
         else:
-            return [(r_idx, c_idx, text_strip(t.get_text(), strip_text))], error
+            return [(r_idx, c_idx, text_strip(t.text, strip_text))], error
 
 
 def compute_accuracy(error_weights):
