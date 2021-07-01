@@ -136,14 +136,14 @@ class Stream(BaseParser):
             # is checking for upright necessary?
             # if t.get_text().strip() and all([obj.upright for obj in t._objs if
             # type(obj) is LTChar]):
-            if t.get_text().strip():
-                if not np.isclose(row_y, t.y0, atol=row_tol):
-                    rows.append(sorted(temp, key=lambda t: t.x0))
+            if t.text.strip():
+                if not np.isclose(row_y, t.bottom, atol=row_tol):
+                    rows.append(sorted(temp, key=lambda t: t.left))
                     temp = []
-                    row_y = t.y0
+                    row_y = t.bottom
                 temp.append(t)
 
-        rows.append(sorted(temp, key=lambda t: t.x0))
+        rows.append(sorted(temp, key=lambda t: t.left))
         if len(rows) > 1:
             __ = rows.pop(0)  # TODO: hacky
         return rows
@@ -190,6 +190,7 @@ class Stream(BaseParser):
                             merged[-1] = (lower_bound, upper_bound)
                     else:
                         merged.append(higher)
+
         return merged
 
     @staticmethod
@@ -210,7 +211,7 @@ class Stream(BaseParser):
 
         """
         row_mids = [
-            sum([(t.y0 + t.y1) / 2 for t in r]) / len(r) if len(r) > 0 else 0
+            sum([(t.bottom + t.top) / 2 for t in r]) / len(r) if len(r) > 0 else 0
             for r in rows_grouped
         ]
         rows = [(row_mids[i] + row_mids[i - 1]) / 2 for i in range(1, len(row_mids))]
@@ -242,7 +243,7 @@ class Stream(BaseParser):
             text = Stream._group_rows(text, row_tol=row_tol)
             elements = [len(r) for r in text]
             new_cols = [
-                (t.x0, t.x1) for r in text if len(r) == max(elements) for t in r
+                (t.left, t.right) for r in text if len(r) == max(elements) for t in r
             ]
             cols.extend(Stream._merge_columns(sorted(new_cols)))
         return cols
@@ -309,24 +310,24 @@ class Stream(BaseParser):
                 # filter horizontal text
                 hor_text = []
                 for region in self.table_regions:
-                    x1, y1, x2, y2 = region.split(",")
-                    x1 = float(x1)
-                    y1 = float(y1)
-                    x2 = float(x2)
-                    y2 = float(y2)
-                    region_text = text_in_bbox((x1, y2, x2, y1), self.horizontal_text)
+                    left, bottom, right, top = region.split(",")
+                    left = float(left)
+                    bottom = float(bottom)
+                    right = float(right)
+                    top = float(top)
+                    region_text = text_in_bbox((left, top, right, bottom), self.horizontal_text)
                     hor_text.extend(region_text)
             # find tables based on nurminen's detection algorithm
             table_bbox = self._nurminen_table_detection(hor_text)
         else:
             table_bbox = {}
             for area in self.table_areas:
-                x1, y1, x2, y2 = area.split(",")
-                x1 = float(x1)
-                y1 = float(y1)
-                x2 = float(x2)
-                y2 = float(y2)
-                table_bbox[(x1, y2, x2, y1)] = None
+                left, bottom, right, top = area.split(",")
+                left = float(left)
+                bottom = float(bottom)
+                right = float(right)
+                top = float(top)
+                table_bbox[(left, top, right, bottom)] = None
         self.table_bbox = table_bbox
 
     @staticmethod
@@ -344,11 +345,7 @@ class Stream(BaseParser):
         # select elements which lie within table_bbox
         t_bbox = {}
         t_bbox["horizontal"] = text_in_bbox(tk, self.horizontal_text)
-        t_bbox["vertical"] = text_in_bbox(tk, self.vertical_text)
-
-        t_bbox["horizontal"].sort(key=lambda x: (-x.y0, x.x0))
-        t_bbox["vertical"].sort(key=lambda x: (x.x0, -x.y0))
-
+        t_bbox["horizontal"].sort(key=lambda x: (-x.bottom, x.left))
         self.t_bbox = t_bbox
 
         text_x_min, text_y_min, text_x_max, text_y_max = self._text_bbox(self.t_bbox)
@@ -396,9 +393,9 @@ class Stream(BaseParser):
                         )
 
                 if override_num_columns:
-                    cols = [(t.x0, t.x1, t.get_text()) for r in rows_grouped if len(r) == ncols for t in r]
+                    cols = [(t.left, t.right, t.text) for r in rows_grouped if len(r) == ncols for t in r]
                 else:
-                    cols = [(t.x0, t.x1, t.get_text()) for r in rows_grouped if len(r) >= ncols for t in r]
+                    cols = [(t.left, t.right, t.text) for r in rows_grouped if len(r) >= ncols for t in r]
                 cols = self._merge_columns(sorted(cols), column_tol=self.column_tol)
                 inner_text = []
                 for i in range(1, len(cols)):
@@ -409,19 +406,18 @@ class Stream(BaseParser):
                             t
                             for direction in self.t_bbox
                             for t in self.t_bbox[direction]
-                            if t.x0 > left and t.x1 < right
+                            if t.left > left and t.right < right
                         ]
                     )
                 outer_text = [
                     t
                     for direction in self.t_bbox
                     for t in self.t_bbox[direction]
-                    if t.x0 > cols[-1][1] or t.x1 < cols[0][0]
+                    if t.left > cols[-1][1] or t.right < cols[0][0]
                 ]
                 inner_text.extend(outer_text)
                 cols = self._add_columns(cols, inner_text, self.row_tol)
                 cols = self._join_columns(cols, text_x_min, text_x_max)
-
         return cols, rows
 
     def _generate_table(self, table_idx, cols, rows, **kwargs):
@@ -431,7 +427,7 @@ class Stream(BaseParser):
         pos_errors = []
         # TODO: have a single list in place of two directional ones?
         # sorted on x-coordinate based on reading order i.e. LTR or RTL
-        for direction in ["vertical", "horizontal"]:
+        for direction in ["horizontal"]:
             for t in self.t_bbox[direction]:
                 indices, error = get_table_index(
                     table,
@@ -460,8 +456,7 @@ class Stream(BaseParser):
 
         # for plotting
         _text = []
-        _text.extend([(t.x0, t.y0, t.x1, t.y1) for t in self.horizontal_text])
-        _text.extend([(t.x0, t.y0, t.x1, t.y1) for t in self.vertical_text])
+        _text.extend([(t.left, t.bottom, t.right, t.top) for t in self.horizontal_text])
         table._text = _text
         table._image = None
         table._segments = None
@@ -476,20 +471,16 @@ class Stream(BaseParser):
         if not suppress_stdout:
             logger.info(f"Processing {base_filename}")
         if not self.horizontal_text:
-            if self.images:
-                warnings.warn(
-                    f"{base_filename} is image-based, camelot only works on"
-                    " text-based pages."
-                )
-            else:
-                warnings.warn(f"No tables found on {base_filename}")
+            warnings.warn(f"No tables found on {base_filename}")
             return []
         self._generate_table_bbox()
+
         _tables = []
         # sort tables based on y-coord
         for table_idx, tk in enumerate(
             sorted(self.table_bbox.keys(), key=lambda x: x[1], reverse=True)
         ):
+
             cols, rows = self._generate_columns_and_rows(table_idx, tk)
             table = self._generate_table(table_idx, cols, rows)
             table._bbox = tk

@@ -70,7 +70,6 @@ class PDFHandler:
 
         """
         page_numbers = []
-
         if pages == "1":
             page_numbers.append({"start": 1, "end": 1})
         else:
