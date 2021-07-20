@@ -165,7 +165,7 @@ def load_pdf_and_layout(file_path, conf):
             word_box = WordBox(word[0], height - word[3], word[2], height - word[1], word[4])
             words_objs.append(word_box)
         layouts[page_index] = group_objects(words_objs, laparams_line_overlap=laparams["line_overlap"],
-                                           laparams_word_margin=laparams["word_margin"])
+                                            laparams_word_margin=laparams["word_margin"])
         create_page_tree(page, layouts, page_index, pq_obj)
         page_index += 1
     dimensions = (width, height)

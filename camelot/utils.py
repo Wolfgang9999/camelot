@@ -434,7 +434,7 @@ def bbox_area(bb) -> float:
         Area of the bounding box of the object
 
     """
-    return (bb.x1 - bb.x0) * (bb.y1 - bb.y0)
+    return (bb.right - bb.left) * (bb.top - bb.bottom)
 
 
 def bbox_intersect(ba, bb) -> bool:

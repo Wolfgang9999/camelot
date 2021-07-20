@@ -336,10 +336,10 @@ class Lattice(BaseParser):
             tk, self.vertical_segments, self.horizontal_segments
         )
         t_bbox["horizontal"] = text_in_bbox(tk, self.horizontal_text)
-        t_bbox["vertical"] = text_in_bbox(tk, self.vertical_text)
+        # t_bbox["vertical"] = text_in_bbox(tk, self.vertical_text)
 
-        t_bbox["horizontal"].sort(key=lambda x: (-x.y0, x.x0))
-        t_bbox["vertical"].sort(key=lambda x: (x.x0, -x.y0))
+        t_bbox["horizontal"].sort(key=lambda x: (-x.bottom, x.left))
+        # t_bbox["vertical"].sort(key=lambda x: (x.x0, -x.y0))
 
         self.t_bbox = t_bbox
 
@@ -373,7 +373,7 @@ class Lattice(BaseParser):
         pos_errors = []
         # TODO: have a single list in place of two directional ones?
         # sorted on x-coordinate based on reading order i.e. LTR or RTL
-        for direction in ["vertical", "horizontal"]:
+        for direction in ["horizontal"]:
             for t in self.t_bbox[direction]:
                 indices, error = get_table_index(
                     table,
@@ -411,8 +411,8 @@ class Lattice(BaseParser):
 
         # for plotting
         _text = []
-        _text.extend([(t.x0, t.y0, t.x1, t.y1) for t in self.horizontal_text])
-        _text.extend([(t.x0, t.y0, t.x1, t.y1) for t in self.vertical_text])
+        _text.extend([(t.left, t.bottom, t.right, t.top) for t in self.horizontal_text])
+        # _text.extend([(t.x0, t.y0, t.x1, t.y1) for t in self.vertical_text])
         table._text = _text
         table._image = (self.image, self.table_bbox_unscaled)
         table._segments = (self.vertical_segments, self.horizontal_segments)
