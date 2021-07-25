@@ -11,21 +11,6 @@ from itertools import groupby
 from operator import itemgetter
 
 import numpy as np
-from pdfminer.pdfparser import PDFParser
-from pdfminer.pdfdocument import PDFDocument
-from pdfminer.pdfpage import PDFPage
-from pdfminer.pdfpage import PDFTextExtractionNotAllowed
-from pdfminer.pdfinterp import PDFResourceManager
-from pdfminer.pdfinterp import PDFPageInterpreter
-from pdfminer.converter import PDFPageAggregator
-from pdfminer.layout import (
-    LAParams,
-    LTAnno,
-    LTChar,
-    LTTextLineHorizontal,
-    LTTextLineVertical,
-    LTImage
-)
 
 from urllib.request import Request, urlopen
 from urllib.parse import urlparse as parse_url

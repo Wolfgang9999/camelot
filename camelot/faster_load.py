@@ -96,9 +96,10 @@ def group_objects(objs, laparams_line_overlap=0.5, laparams_word_margin=0.2):
             if halign:
                 line.add(obj1)
             else:
-                res.append(line)
+                if line.height < 80:
+                    res.append(line)
                 line = obj1
-    if line is not None:
+    if line is not None and line.height < 80:
         res.append(line)
     return res
 
@@ -149,7 +150,7 @@ def get_precomputed_text_boxes(pq_obj, precompute_texts, num_pages):
 
 
 def load_pdf_and_layout(file_path, conf):
-    pdfquery_params = {'word_margin': 3, 'line_overlap': 0.5}
+    pdfquery_params = {'word_margin': 5, 'line_overlap': 0.5}
     conf_pdfquery_params = conf.get('pdfquery_params', {})
     laparams = {**pdfquery_params, **conf_pdfquery_params}
     doc = fitz.open(file_path)
