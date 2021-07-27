@@ -100,6 +100,7 @@ def read_pdf(
     tables : camelot.core.TableList
 
     """
+    print(pages)
     if flavor not in ["lattice", "stream"]:
         raise NotImplementedError(
             "Unknown flavor specified." " Use either 'lattice' or 'stream'"
